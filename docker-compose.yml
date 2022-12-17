@@ -1,0 +1,30 @@
+version: '3.7'
+
+services:
+#  finance-bot:
+#    build: .
+#    container_name: finance-bot
+#    restart: always
+#    ports:
+#      - "8300:8300"
+#    depends_on:
+#      - finance-bot-pg
+#    env_file:
+#      - .env
+
+  finance-bot-pg:
+    container_name: finance-bot-pg
+    image: library/postgres
+    volumes:
+      - finance-bot-pg-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=$PG_DB
+      - POSTGRES_USER=$PG_USER
+      - POSTGRES_PASSWORD=$PG_PASS
+    ports:
+      - $PG_PORT:5432
+
+volumes:
+  finance-bot-pg-data:
+    name: finance-bot-pg-data
+
