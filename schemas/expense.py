@@ -16,7 +16,7 @@ class ExpenseSchema(BaseModel):
     created: datetime = None
 
     @classmethod
-    def from_db(cls, expense: Tuple[str, float, datetime]):
-        category, amount, created = expense
-        return cls(category=category, amount=amount, created=created)
+    def from_db(cls, expense: Tuple[int, str, float, datetime]):
+        expense_id, category, amount, created = expense
+        return cls(id=expense_id, category=category, amount=amount, created=created)
 

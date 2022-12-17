@@ -22,7 +22,8 @@ async def add_expense(raw_message: str):
 async def get_today_statistics() -> str:
     """Возвращает строкой статистику расходов за сегодня"""
     async with async_session() as db:
-        expenses: List[ExpenseSchema] = await Expense.get_statistics(db=db, period='today')
+        expenses = await Expense.get_statistics(db=db, period='today')
+        expenses = [ExpenseSchema.from_db(e) for e in expenses]
     return (f"Расходы сегодня:\n"
             f"всего — {sum([e.amount for e in expenses])} {settings.CURRENCY} "
             f"из {await _get_budget_limit()}.\n\n" +
@@ -33,7 +34,8 @@ async def get_today_statistics() -> str:
 async def get_month_statistics() -> str:
     """Возвращает строкой статистику расходов за текущий месяц"""
     async with async_session() as db:
-        expenses: List[ExpenseSchema] = await Expense.get_statistics(db=db, period='month')
+        expenses = await Expense.get_statistics(db=db, period='month')
+        expenses = [ExpenseSchema.from_db(e) for e in expenses]
     return (f"Расходы в текущем месяце:\n"
             f"всего — {sum([e.amount for e in expenses])} {settings.CURRENCY} "
             f"из {datetime.utcnow().day * await _get_budget_limit()}\n\n" +
@@ -58,6 +60,14 @@ def _parse_message(raw_message: str) -> MessageSchema:
     amount = regexp_result.group(1).replace(" ", "")
     category_text = regexp_result.group(2).strip().lower()
     return MessageSchema(amount=float(amount), category_text=category_text)
+
+
+async def last() -> List[ExpenseSchema]:
+    """Возвращает последние несколько расходов"""
+    async with async_session() as db:
+        expenses = await Expense.get_last(db=db)
+        last_expenses = [ExpenseSchema.from_db(e) for e in expenses]
+    return last_expenses
 
 
 async def _get_budget_limit() -> int:

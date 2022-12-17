@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, select, Date, cast, Float
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, select, Date, cast, Float, desc
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import relationship
@@ -8,7 +8,6 @@ from sqlalchemy.orm import relationship
 from core.db import Base
 from core.exceptions import GetFromDatabaseException, NotCorrectMessage
 from models.base import BaseOrmMixin
-from schemas.expense import ExpenseSchema
 
 
 class Expense(Base, BaseOrmMixin):
@@ -20,6 +19,19 @@ class Expense(Base, BaseOrmMixin):
     category_id = Column(Integer, ForeignKey('category.id', ondelete='CASCADE'), nullable=False)
 
     @classmethod
+    async def get_last(cls, db: AsyncSession):
+        query = select(
+            cls.id, Category.name, cls.amount, cls.created
+        ).join(Category).order_by(desc(cls.created)).limit(10)
+        try:
+            expenses = await db.execute(query)
+            expenses = expenses.all()
+        except SQLAlchemyError as ex:
+            await db.rollback()
+            raise GetFromDatabaseException(f'Error get {cls.__name__} from finance database :: {ex}')
+        return expenses
+
+    @classmethod
     async def get_statistics(cls, db: AsyncSession, period: str):
         if period == 'month':
             deadline = datetime.utcnow().replace(day=1).date()
@@ -27,7 +39,7 @@ class Expense(Base, BaseOrmMixin):
             deadline = datetime.utcnow().date()
 
         query = select(
-            Category.name, cls.amount, cls.created
+            cls.id, Category.name, cls.amount, cls.created
         ).join(Category).where(cast(cls.created, Date) >= deadline).order_by(cls.category_id)
 
         try:
@@ -36,7 +48,7 @@ class Expense(Base, BaseOrmMixin):
         except SQLAlchemyError as ex:
             await db.rollback()
             raise GetFromDatabaseException(f'Error get {cls.__name__} from finance database :: {ex}')
-        return [ExpenseSchema.from_db(e) for e in expenses]
+        return expenses
 
 
 class Aliase(Base, BaseOrmMixin):

@@ -58,6 +58,21 @@ async def month_statistics(message: types.Message):
     await message.answer(answer_message)
 
 
+@dp.message_handler(commands=['expenses'])
+async def list_expenses(message: types.Message):
+    """Отправляет последние несколько записей о расходах"""
+    last_expenses = await expenses.last()
+    if not last_expenses:
+        await message.answer("Расходы ещё не заведены")
+        return
+
+    last_expenses_rows = [
+        f"{e.amount} {settings.CURRENCY} на {e.category} — нажми /del{e.id} для удаления" for e in last_expenses
+    ]
+    answer_message = "Последние сохранённые траты:\n\n* " + "\n\n* ".join(last_expenses_rows)
+    await message.answer(answer_message)
+
+
 @dp.message_handler()
 async def add_expense(message: types.Message):
     """Добавляет новый расход"""
