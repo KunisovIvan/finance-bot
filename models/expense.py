@@ -20,20 +20,6 @@ class Expense(Base, BaseOrmMixin):
     category_id = Column(Integer, ForeignKey('category.id', ondelete='CASCADE'), nullable=False)
 
     @classmethod
-    async def get_today_statistics(cls, db: AsyncSession):
-        query = select(Category.name, cls.amount, cls.created)\
-            .join(Category)\
-            .where(cast(cls.created, Date) >= datetime.utcnow().date())\
-            .order_by(cls.category_id)
-        try:
-            expenses = await db.execute(query)
-            expenses = expenses.scalars().all()
-        except SQLAlchemyError as ex:
-            await db.rollback()
-            raise GetFromDatabaseException(f'Error get {cls.__name__} from finance database :: {ex}')
-        return expenses
-
-    @classmethod
     async def get_statistics(cls, db: AsyncSession, period: str):
         if period == 'month':
             deadline = datetime.utcnow().replace(day=1).date()
@@ -76,7 +62,7 @@ class Category(Base, BaseOrmMixin):
             return category.id
         alias = await Aliase.by_name(db=db, name=category_name)
         if not alias:
-            raise NotCorrectMessage(f"Category  with name '{category_name}' not found")
+            raise NotCorrectMessage(f"Категории с именем '{category_name}' не существует")
         return alias.category_id
 
 

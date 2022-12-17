@@ -1,16 +1,16 @@
 version: '3.7'
 
 services:
-#  finance-bot:
-#    build: .
-#    container_name: finance-bot
-#    restart: always
-#    ports:
-#      - "8300:8300"
-#    depends_on:
-#      - finance-bot-pg
-#    env_file:
-#      - .env
+  finance-bot:
+    build: .
+    container_name: finance-bot
+    restart: always
+    ports:
+      - "8300:8300"
+    depends_on:
+      - finance-bot-pg
+    env_file:
+      - .env
 
   finance-bot-pg:
     container_name: finance-bot-pg

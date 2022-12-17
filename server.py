@@ -73,5 +73,5 @@ async def add_expense(message: types.Message):
 
 
 if __name__ == '__main__':
-    logger.info(f'Start Finance TG Bot with settings: {settings.dict()}')
+    logger.debug(f'Start Finance TG Bot with settings: {settings.dict()}')
     executor.start_polling(dp, skip_updates=True)
