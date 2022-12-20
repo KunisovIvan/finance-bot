@@ -27,7 +27,10 @@ async def get_today_statistics() -> str:
     return (f"Расходы сегодня:\n"
             f"всего — {sum([e.amount for e in expenses])} {settings.CURRENCY} "
             f"из {await _get_budget_limit()}.\n\n" +
-            "\n".join([f'{e.amount} {settings.CURRENCY} | {e.category} | {e.created.date()}' for e in expenses]) +
+            "\n".join([
+                f'{e.amount} {settings.CURRENCY} | {e.category} | {e.created.time().strftime("%H:%M")}'
+                for e in expenses
+            ]) +
             "\n\nЗа текущий месяц: /month")
 
 
@@ -39,7 +42,10 @@ async def get_month_statistics() -> str:
     return (f"Расходы в текущем месяце:\n"
             f"всего — {sum([e.amount for e in expenses])} {settings.CURRENCY} "
             f"из {datetime.utcnow().day * await _get_budget_limit()}\n\n" +
-            "\n".join([f'{e.amount} {settings.CURRENCY} | {e.category} | {e.created.date()}' for e in expenses]))
+            "\n".join([
+                f'{e.amount} {settings.CURRENCY} | {e.category} | {e.created.date().strftime("%d-%m-%Y")}'
+                for e in expenses
+            ]))
 
 
 async def delete_expense(expense_id: int) -> None:
