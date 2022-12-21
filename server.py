@@ -33,10 +33,10 @@ async def del_expense(message: types.Message):
     await message.answer(answer_message)
 
 
-@dp.message_handler(lambda message: message.text.startswith('/cat'))
+@dp.message_handler(lambda message: message.text.startswith('/cat_'))
 async def get_category(message: types.Message):
     """Отправляет одну запись о категории вместе с ее расходами по её идентификатору"""
-    args = message.text[4:]
+    args = message.text[5:]
     period = args[0]
     category_id = int(args[1:])
     answer_message = await expenses.get_category(category_id, period)

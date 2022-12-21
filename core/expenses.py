@@ -43,7 +43,7 @@ async def get_statistics(period: str) -> str:
             amount = sum([e.amount for e in expenses])
             if amount > 0:
                 full_amounts += amount
-                command = f'/catd{c.id}' if period == 'today' else f'/catm{c.id}'
+                command = f'/cat_d{c.id}' if period == 'today' else f'/cat_m{c.id}'
                 c_rows.append(f'{amount} {settings.CURRENCY} | {c.name} | {command}')
     #
     answer_message = (f"{msg_title}:\n всего — {full_amounts} {settings.CURRENCY} из {budget}\n\n" + "\n".join(c_rows))
