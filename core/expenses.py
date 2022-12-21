@@ -1,51 +1,56 @@
 import re
-from datetime import datetime
-from typing import List
+from datetime import datetime, timedelta
 
 from core import exceptions
 from core.db import async_session
 from core.settings import settings
 from models import Expense, Category, Budget
-from schemas.expense import MessageSchema, ExpenseSchema
+from schemas.expense import MessageSchema, ExpenseSchema, CategorySchema
 
 
 async def add_expense(raw_message: str):
-    """Добавляет новую трату.
-    Принимает на вход текст сообщения, пришедшего в бот."""
+    """
+    Добавляет новую трату.
+    Принимает на вход текст сообщения, пришедшего в бот.
+    """
     m = _parse_message(raw_message)
     async with async_session() as db:
         category_id = await Category.get_category_id(db=db, category_name=m.category_text)
         e = await Expense.create(db=db, amount=m.amount, category_id=category_id, created=datetime.utcnow())
-    return ExpenseSchema(id=e.id, amount=e.amount, category=m.category_text)
+    return ExpenseSchema(id=e.id, amount=e.amount, category_name=m.category_text)
 
 
-async def get_today_statistics() -> str:
-    """Возвращает строкой статистику расходов за сегодня"""
-    async with async_session() as db:
-        expenses = await Expense.get_statistics(db=db, period='today')
-        expenses = [ExpenseSchema.from_db(e) for e in expenses]
-    return (f"Расходы сегодня:\n"
-            f"всего — {sum([e.amount for e in expenses])} {settings.CURRENCY} "
-            f"из {await _get_budget_limit()}.\n\n" +
-            "\n".join([
-                f'{e.amount} {settings.CURRENCY} | {e.category} | {e.created.time().strftime("%H:%M")}'
-                for e in expenses
-            ]) +
-            "\n\nЗа текущий месяц: /month")
-
-
-async def get_month_statistics() -> str:
+async def get_statistics(period: str) -> str:
     """Возвращает строкой статистику расходов за текущий месяц"""
     async with async_session() as db:
-        expenses = await Expense.get_statistics(db=db, period='month')
-        expenses = [ExpenseSchema.from_db(e) for e in expenses]
-    return (f"Расходы в текущем месяце:\n"
-            f"всего — {sum([e.amount for e in expenses])} {settings.CURRENCY} "
-            f"из {datetime.utcnow().day * await _get_budget_limit()}\n\n" +
-            "\n".join([
-                f'{e.amount} {settings.CURRENCY} | {e.category} | {e.created.date().strftime("%d-%m-%Y")}'
-                for e in expenses
-            ]))
+        categories = await Category.get_all(db=db, selectinload_attr='expenses')
+        categories = [CategorySchema.from_db(c) for c in categories]
+        #
+        if period == 'month':
+            deadline = datetime.utcnow().replace(day=1).date()
+            msg_title = 'Расходы в текущем месяце'
+            budget = datetime.utcnow().day * await _get_budget_limit()
+        else:
+            deadline = datetime.utcnow().date()
+            msg_title = 'Расходы за сегодня'
+            budget = await _get_budget_limit()
+        #
+        c_rows = []
+        full_amounts = 0
+        #
+        for c in categories:
+            expenses = list(filter(lambda e: e.created.date() >= deadline, c.expenses))
+            amount = sum([e.amount for e in expenses])
+            if amount > 0:
+                full_amounts += amount
+                command = f'/catd{c.id}' if period == 'today' else f'/catm{c.id}'
+                c_rows.append(f'{amount} {settings.CURRENCY} | {c.name} | {command}')
+    #
+    answer_message = (f"{msg_title}:\n всего — {full_amounts} {settings.CURRENCY} из {budget}\n\n" + "\n".join(c_rows))
+    if period == 'today':
+        answer_message += "\n\nЗа текущий месяц: /month"
+    #
+    return answer_message
 
 
 async def delete_expense(expense_id: int) -> None:
@@ -68,12 +73,31 @@ def _parse_message(raw_message: str) -> MessageSchema:
     return MessageSchema(amount=float(amount), category_text=category_text)
 
 
-async def last() -> List[ExpenseSchema]:
-    """Возвращает последние несколько расходов"""
+async def get_category(category_id, period):
+    """Получает одну запись о категории вместе с ее расходами по её идентификатору"""
     async with async_session() as db:
-        expenses = await Expense.get_last(db=db)
-        last_expenses = [ExpenseSchema.from_db(e) for e in expenses]
-    return last_expenses
+        category = await Category.by_id(db=db, instance_id=category_id, selectinload_attr='expenses')
+        c = CategorySchema.from_db(category)
+        #
+        if period == 'm':
+            deadline = datetime.utcnow().date().replace(day=1)
+            date_format = '%d-%m-%Y'
+            msg_title = f'Расходы по категории {c.name} за месяц'
+        else:
+            deadline = datetime.utcnow().date()
+            date_format = "%H:%M"
+            msg_title = f'Расходы по категории {c.name} за сегодня'
+        #
+        expenses = list(filter(lambda e: e.created.date() >= deadline, c.expenses))
+    return (
+            f"{msg_title}:\n"
+            f"всего — {sum([e.amount for e in expenses])} {settings.CURRENCY}.\n\n" +
+            "\n".join([
+                f'{e.amount} {settings.CURRENCY} | {c.name} | '
+                f'{(e.created + timedelta(hours=settings.DIFFERENCE_WITH_UTC)).strftime(date_format)} | /del{e.id}'
+                for e in expenses
+            ])
+    )
 
 
 async def _get_budget_limit() -> int:

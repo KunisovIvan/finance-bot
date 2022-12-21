@@ -21,7 +21,6 @@ async def send_welcome(message: types.Message):
         "Добавить расход: 250 такси\n"
         "Сегодняшняя статистика: /today\n"
         "За текущий месяц: /month\n"
-        "Последние внесённые расходы: /expenses\n"
         "Категории трат: /categories")
 
 
@@ -34,42 +33,37 @@ async def del_expense(message: types.Message):
     await message.answer(answer_message)
 
 
+@dp.message_handler(lambda message: message.text.startswith('/cat'))
+async def get_category(message: types.Message):
+    """Отправляет одну запись о категории вместе с ее расходами по её идентификатору"""
+    args = message.text[4:]
+    period = args[0]
+    category_id = int(args[1:])
+    answer_message = await expenses.get_category(category_id, period)
+    await message.answer(answer_message)
+
+
 @dp.message_handler(commands=['categories'])
 async def categories_list(message: types.Message):
     """Отправляет список категорий расходов"""
     async with async_session() as db:
         categories = await Category.get_all(db=db, selectinload_attr='aliases')
-    answer_message = "Категории трат:\n\n* " +\
-                     ("\n* ".join([c.name+' ('+", ".join([a.name for a in c.aliases])+')' for c in categories]))
+    answer_message = "Категории трат:\n\n* " + \
+                     ("\n* ".join([c.name + ' (' + ", ".join([a.name for a in c.aliases]) + ')' for c in categories]))
     await message.answer(answer_message)
 
 
 @dp.message_handler(commands=['today'])
 async def today_statistics(message: types.Message):
     """Отправляет сегодняшнюю статистику трат"""
-    answer_message = await expenses.get_today_statistics()
+    answer_message = await expenses.get_statistics(period='today')
     await message.answer(answer_message)
 
 
 @dp.message_handler(commands=['month'])
 async def month_statistics(message: types.Message):
     """Отправляет статистику трат текущего месяца"""
-    answer_message = await expenses.get_month_statistics()
-    await message.answer(answer_message)
-
-
-@dp.message_handler(commands=['expenses'])
-async def list_expenses(message: types.Message):
-    """Отправляет последние несколько записей о расходах"""
-    last_expenses = await expenses.last()
-    if not last_expenses:
-        await message.answer("Расходы ещё не заведены")
-        return
-
-    last_expenses_rows = [
-        f"{e.amount} {settings.CURRENCY} на {e.category} — нажми /del{e.id} для удаления" for e in last_expenses
-    ]
-    answer_message = "Последние сохранённые траты:\n\n* " + "\n\n* ".join(last_expenses_rows)
+    answer_message = await expenses.get_statistics(period='month')
     await message.answer(answer_message)
 
 
@@ -82,8 +76,8 @@ async def add_expense(message: types.Message):
         await message.answer(str(e))
         return
     answer_message = (
-        f"Добавлены траты {e.amount} {settings.CURRENCY} на {e.category}.\n\n"
-        f"{await expenses.get_today_statistics()}")
+        f"Добавлены траты {e.amount} {settings.CURRENCY} на {e.category_name}.\n\n"
+        f"{await expenses.get_statistics(period='today')}")
     await message.answer(answer_message)
 
 

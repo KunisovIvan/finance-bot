@@ -1,4 +1,4 @@
-from typing import Set, Union, List
+from typing import List
 
 from pydantic import BaseSettings, PostgresDsn, validator
 
@@ -32,6 +32,8 @@ class Settings(BaseSettings):
 
     API_TOKEN: str
     ACCESS_IDS: List[str]
+
+    DIFFERENCE_WITH_UTC: int
 
     # for scheduler cron HOUR:MINUTE
     HOUR: int

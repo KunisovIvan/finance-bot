@@ -1,7 +1,9 @@
 from datetime import datetime
-from typing import Tuple
+from typing import List
 
 from pydantic import BaseModel
+
+from models import Category, Expense
 
 
 class MessageSchema(BaseModel):
@@ -12,11 +14,23 @@ class MessageSchema(BaseModel):
 class ExpenseSchema(BaseModel):
     id: int = None
     amount: float
-    category: str
     created: datetime = None
+    category_name: str = None
 
     @classmethod
-    def from_db(cls, expense: Tuple[int, str, float, datetime]):
-        expense_id, category, amount, created = expense
-        return cls(id=expense_id, category=category, amount=amount, created=created)
+    def from_db(cls, e: Expense):
+        return cls(id=e.id, amount=e.amount, created=e.created)
 
+
+class CategorySchema(BaseModel):
+    id: int
+    name: str
+    expenses: List[ExpenseSchema] = []
+
+    @classmethod
+    def from_db(cls, c: Category):
+        return cls(
+            id=c.id,
+            name=c.name,
+            expenses=[ExpenseSchema.from_db(e) for e in c.expenses]
+        )
