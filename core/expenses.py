@@ -20,6 +20,12 @@ async def add_expense(raw_message: str):
     return ExpenseSchema(id=e.id, amount=e.amount, category_name=m.category_text)
 
 
+async def delete_expense(expense_id: int) -> None:
+    """Удаляет трату по ее идентификатору"""
+    async with async_session() as db:
+        await Expense.delete_by_id(db=db, instance_id=expense_id)
+
+
 async def get_statistics(period: str) -> str:
     """Возвращает строкой статистику расходов за текущий месяц"""
     async with async_session() as db:
@@ -53,27 +59,7 @@ async def get_statistics(period: str) -> str:
     return answer_message
 
 
-async def delete_expense(expense_id: int) -> None:
-    """Удаляет трату по ее идентификатору"""
-    async with async_session() as db:
-        await Expense.delete_by_id(db=db, instance_id=expense_id)
-
-
-def _parse_message(raw_message: str) -> MessageSchema:
-    """Парсит текст пришедшего сообщения о новом расходе."""
-    regexp_result = re.match(r"([\d+\.\d+]+) (.*)", raw_message)
-    if not regexp_result or not regexp_result.group(0) \
-            or not regexp_result.group(1) or not regexp_result.group(2):
-        raise exceptions.NotCorrectMessage(
-            "Не могу понять сообщение. Напишите сообщение в формате, "
-            "например:\n1500 метро")
-
-    amount = regexp_result.group(1).replace(" ", "")
-    category_text = regexp_result.group(2).strip().lower()
-    return MessageSchema(amount=float(amount), category_text=category_text)
-
-
-async def get_category(category_id, period):
+async def get_category(category_id: int, period: str) -> str:
     """Получает одну запись о категории вместе с ее расходами по её идентификатору"""
     async with async_session() as db:
         category = await Category.by_id(db=db, instance_id=category_id, selectinload_attr='expenses')
@@ -98,6 +84,20 @@ async def get_category(category_id, period):
                 for e in expenses
             ])
     )
+
+
+def _parse_message(raw_message: str) -> MessageSchema:
+    """Парсит текст пришедшего сообщения о новом расходе."""
+    regexp_result = re.match(r"([\d+\.\d+]+) (.*)", raw_message)
+    if not regexp_result or not regexp_result.group(0) \
+            or not regexp_result.group(1) or not regexp_result.group(2):
+        raise exceptions.NotCorrectMessage(
+            "Не могу понять сообщение. Напишите сообщение в формате, "
+            "например:\n1500 метро")
+
+    amount = regexp_result.group(1).replace(" ", "")
+    category_text = regexp_result.group(2).strip().lower()
+    return MessageSchema(amount=float(amount), category_text=category_text)
 
 
 async def _get_budget_limit() -> int:

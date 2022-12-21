@@ -35,11 +35,6 @@ class Settings(BaseSettings):
 
     DIFFERENCE_WITH_UTC: int
 
-    # for scheduler cron HOUR:MINUTE
-    HOUR: int
-    MINUTE: int
-    TIMEZONE: str = 'Europe/Moscow'
-
     CURRENCY: str
 
     POSTGRES_CONFIG: PostgresConfig = PostgresConfig()
